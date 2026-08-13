@@ -1,0 +1,8 @@
+{
+	"appId": "com.kawa.app",
+	"appName": "Kawa",
+	"webDir": "www",
+	"server": {
+		"androidScheme": "https"
+	}
+}
