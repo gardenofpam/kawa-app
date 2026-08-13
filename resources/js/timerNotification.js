@@ -24,7 +24,7 @@ function getReminderId(kind, itemId, dateStr) {
 }
 
 const WAKE_UP_REMINDER_ID = hashId("profile:wake-up");
-const WAKE_UP_CHANNEL_ID = "kawa_wake_up_alarm_v3";
+const WAKE_UP_CHANNEL_ID = "kawa_wake_up_alarm_v2";
 const WAKE_UP_SCHEDULE_DAYS = 32;
 
 function buildDateTime(dateStr, timeStr) {
@@ -214,21 +214,9 @@ async function ensureWakeUpAlarmChannel() {
       await native.ensureWakeUpAlarmChannel();
       return;
     }
-    throw new Error("The native wake-up alarm channel is unavailable.");
+    await notifications.createChannel({ id: WAKE_UP_CHANNEL_ID, name: "Kawa Wake-Up Alarm", description: "Daily wake-up alarm", importance: 5, visibility: 1, vibration: true });
   } catch (error) {
     console.log("ensureWakeUpAlarmChannel error:", error);
-  }
-}
-
-async function checkWakeUpAlarmSound() {
-  const native = getNativeTimer();
-  if (!isNativeAndroid() || !native?.getWakeUpAlarmChannelStatus) return false;
-  try {
-    const status = await native.getWakeUpAlarmChannelStatus();
-    return status.soundEnabled === true;
-  } catch (error) {
-    console.log("wake-up alarm sound check error:", error);
-    return false;
   }
 }
 
@@ -251,14 +239,13 @@ export async function getWakeUpAlarmStatus() {
   await ensureWakeUpAlarmChannel();
   const display = await ensureDisplayPermission(false);
   const exact = await checkExactAlarmPermission();
-  const sound = await checkWakeUpAlarmSound();
-  return { supported: true, display, exact, sound, ready: display && exact && sound };
+  return { supported: true, display, exact, ready: display && exact };
 }
 
 export async function enableWakeUpAlarm() {
   const notifications = getLocalNotifications();
   if (!isNativeAndroid() || !notifications) {
-    return { supported: false, display: false, exact: false, sound: false, ready: false };
+    return { supported: false, display: false, exact: false, ready: false };
   }
 
   const display = await ensureDisplayPermission(true);
@@ -274,45 +261,7 @@ export async function enableWakeUpAlarm() {
     }
   }
 
-  const sound = await checkWakeUpAlarmSound();
-  return { supported: true, display, exact, sound, ready: display && exact && sound };
-}
-
-export async function openWakeUpAlarmSoundSettings() {
-  const native = getNativeTimer();
-  if (!isNativeAndroid() || !native?.openWakeUpAlarmSoundSettings) return false;
-  try {
-    await ensureWakeUpAlarmChannel();
-    await native.openWakeUpAlarmSoundSettings();
-    return true;
-  } catch (error) {
-    console.log("open wake-up alarm sound settings error:", error);
-    return false;
-  }
-}
-
-export async function testWakeUpAlarmSound() {
-  const notifications = getLocalNotifications();
-  if (!isNativeAndroid() || !notifications) return false;
-  const display = await ensureDisplayPermission(true);
-  if (!display) return false;
-  await ensureWakeUpAlarmChannel();
-  const at = new Date(Date.now() + 1500);
-  try {
-    await notifications.schedule({ notifications: [{
-      id: hashId("wake-up:sound-test"),
-      title: "Kawa Alarm Test",
-      body: "Your wake-up alarm sound is working.",
-      channelId: WAKE_UP_CHANNEL_ID,
-      smallIcon: "ic_stat_kawa",
-      schedule: { at, allowWhileIdle: true },
-      extra: { type: "wake-up-test" },
-    }] });
-    return true;
-  } catch (error) {
-    console.log("wake-up alarm sound test error:", error);
-    return false;
-  }
+  return { supported: true, display, exact, ready: display && exact };
 }
 
 export async function requestPermission() {
