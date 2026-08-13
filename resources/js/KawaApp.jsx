@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useReducer } from "react";
-  import { startTimerNotification, pauseTimerNotification, clearTimerNotification, requestPermission, reconcileScheduledReminders } from './timerNotification';
+  import { startTimerNotification, pauseTimerNotification, clearTimerNotification, requestPermission, reconcileScheduledReminders, getWakeUpAlarmStatus, enableWakeUpAlarm, openWakeUpAlarmSoundSettings, testWakeUpAlarmSound } from './timerNotification';
 
   // ─── Design Tokens ────────────────────────────────────────────────────────────
   function TaskDetailModal({ task, date, onClose, dispatch }) {
@@ -663,6 +663,9 @@ import { useState, useEffect, useRef, useReducer } from "react";
     const focusMins = state.focus.sessions[DAY] || 0;
     const maxStreak = Math.max(state.routine.streak, state.focus.streak, state.workout.streak, 0);
     const [now, setNow] = useState(Date.now());
+    const [alarmStatus, setAlarmStatus] = useState(null);
+    const [enablingAlarm, setEnablingAlarm] = useState(false);
+    const [testingAlarm, setTestingAlarm] = useState(false);
     const workoutDay = getTodayWorkoutDay(state.workout.history);
     const workoutEntries = getWorkoutDayEntries(workoutDay);
     const workoutDraft = getWorkoutDayDraft(workoutDay);
@@ -672,6 +675,30 @@ import { useState, useEffect, useRef, useReducer } from "react";
       const id = setInterval(() => setNow(Date.now()), 1000);
       return () => clearInterval(id);
     }, [state.workout.history]);
+    useEffect(() => {
+      let active = true;
+      const refreshAlarmStatus = () => getWakeUpAlarmStatus().then((status) => {
+        if (active) setAlarmStatus(status);
+      });
+      refreshAlarmStatus();
+      window.addEventListener("focus", refreshAlarmStatus);
+      return () => {
+        active = false;
+        window.removeEventListener("focus", refreshAlarmStatus);
+      };
+    }, []);
+    const handleEnableAlarm = async () => {
+      setEnablingAlarm(true);
+      const status = await enableWakeUpAlarm();
+      setAlarmStatus(status);
+      if (status.ready) await reconcileScheduledReminders(state);
+      setEnablingAlarm(false);
+    };
+    const handleTestAlarm = async () => {
+      setTestingAlarm(true);
+      await testWakeUpAlarmSound();
+      setTimeout(() => setTestingAlarm(false), 2500);
+    };
     const workoutPct = workoutEntries.length > 0 ? 100 : workoutDraft.name.trim() ? 45 : 0;
     const workoutVal = workoutEntries.length > 0 ? String(workoutEntries.length) : workoutDraft.name.trim() ? "Set" : "—";
     const workoutCol = workoutEntries.length > 0 ? C.success : workoutDraft.name.trim() ? C.mid : C.primary;
@@ -694,6 +721,21 @@ import { useState, useEffect, useRef, useReducer } from "react";
                 aria-label="Wake up time"
                 style={{ width:"100%", padding:"7px 10px", borderRadius:10, border:`1.5px solid ${C.border}`, fontSize:12, fontFamily:"inherit", color:C.text, outline:"none", background:C.surface, textAlign:"right" }}
               />
+              {alarmStatus?.supported && (alarmStatus.ready ? (
+                <div style={{ display:"flex", gap:7, alignItems:"center" }}>
+                  <button onClick={handleTestAlarm} disabled={testingAlarm} style={{ border:0, background:"none", color:C.success, fontSize:9, fontWeight:800, padding:0, cursor:"pointer", textDecoration:"underline" }}>
+                    {testingAlarm ? "Listen..." : "Test sound"}
+                  </button>
+                  <button onClick={openWakeUpAlarmSoundSettings} style={{ border:0, background:"none", color:C.primary, fontSize:9, fontWeight:800, padding:0, cursor:"pointer", textDecoration:"underline" }}>Sound settings</button>
+                </div>
+              ) : (
+                <div style={{ display:"flex", gap:7, alignItems:"center" }}>
+                  <button onClick={handleEnableAlarm} disabled={enablingAlarm} style={{ border:0, background:"none", color:C.primary, fontSize:9, fontWeight:800, padding:0, cursor:"pointer", textDecoration:"underline" }}>
+                    {enablingAlarm ? "Opening settings..." : "Enable alarm"}
+                  </button>
+                  {!alarmStatus.sound && <button onClick={openWakeUpAlarmSoundSettings} style={{ border:0, background:"none", color:C.warn, fontSize:9, fontWeight:800, padding:0, cursor:"pointer", textDecoration:"underline" }}>Enable sound</button>}
+                </div>
+              ))}
             </div>
           </div>
           <p style={{ fontSize:11, color:C.textMid, letterSpacing:".08em", textTransform:"uppercase", marginTop:16, marginBottom:4 }}>{TODAY_LABEL}</p>
@@ -1922,7 +1964,7 @@ import { useState, useEffect, useRef, useReducer } from "react";
             <div>
               <p style={{ fontSize:14, fontWeight:800, color:C.primary, fontFamily:"'Syne', sans-serif", marginBottom:3 }}>Kawa — Discipline Tracker</p>
               <p style={{ fontSize:11, color:C.textMid, lineHeight:1.6 }}>Inspired by The 5 AM Club · Robin Sharma</p>
-              <p style={{ fontSize:11, color:C.textLight, marginTop:4 }}>v1.0 · Offline-first · localStorage</p>
+              <p style={{ fontSize:11, color:C.textLight, marginTop:4 }}>v1.0.2 · Offline-first · localStorage</p>
             </div>
           </div>
         </Card>
