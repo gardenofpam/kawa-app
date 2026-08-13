@@ -7,9 +7,7 @@ import android.media.AudioAttributes;
 import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.Build;
-import android.provider.Settings;
 import androidx.core.content.ContextCompat;
-import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
@@ -18,8 +16,7 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 @CapacitorPlugin(name = "TimerPlugin")
 public class TimerPlugin extends Plugin {
 
-    public static final String WAKE_UP_CHANNEL_ID = "kawa_wake_up_alarm_v3";
-    private static final String OLD_WAKE_UP_CHANNEL_ID = "kawa_wake_up_alarm_v2";
+    public static final String WAKE_UP_CHANNEL_ID = "kawa_wake_up_alarm_v2";
 
     @PluginMethod
     public void ensureWakeUpAlarmChannel(PluginCall call) {
@@ -60,49 +57,7 @@ public class TimerPlugin extends Plugin {
             manager.createNotificationChannel(channel);
         }
 
-        if (manager.getNotificationChannel(OLD_WAKE_UP_CHANNEL_ID) != null) {
-            manager.deleteNotificationChannel(OLD_WAKE_UP_CHANNEL_ID);
-        }
-
         call.resolve();
-    }
-
-    @PluginMethod
-    public void getWakeUpAlarmChannelStatus(PluginCall call) {
-        JSObject result = new JSObject();
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
-            result.put("soundEnabled", true);
-            call.resolve(result);
-            return;
-        }
-
-        NotificationManager manager = getContext().getSystemService(NotificationManager.class);
-        NotificationChannel channel = manager == null ? null : manager.getNotificationChannel(WAKE_UP_CHANNEL_ID);
-        boolean soundEnabled = channel != null
-            && channel.getImportance() != NotificationManager.IMPORTANCE_NONE
-            && channel.getSound() != null;
-        result.put("soundEnabled", soundEnabled);
-        call.resolve(result);
-    }
-
-    @PluginMethod
-    public void openWakeUpAlarmSoundSettings(PluginCall call) {
-        try {
-            Intent intent = new Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS);
-            intent.putExtra(Settings.EXTRA_APP_PACKAGE, getContext().getPackageName());
-            intent.putExtra(Settings.EXTRA_CHANNEL_ID, WAKE_UP_CHANNEL_ID);
-            getActivity().startActivity(intent);
-            call.resolve();
-        } catch (Exception channelError) {
-            try {
-                Intent fallback = new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS);
-                fallback.putExtra(Settings.EXTRA_APP_PACKAGE, getContext().getPackageName());
-                getActivity().startActivity(fallback);
-                call.resolve();
-            } catch (Exception appError) {
-                call.reject("Could not open alarm sound settings.", appError);
-            }
-        }
     }
 
     @PluginMethod
