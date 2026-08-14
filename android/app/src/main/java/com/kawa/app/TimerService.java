@@ -6,6 +6,9 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
+import android.media.AudioAttributes;
+import android.media.RingtoneManager;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
@@ -125,6 +128,11 @@ public class TimerService extends Service {
         running = false;
         stopTicking();
 
+        Uri alarmSound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
+        if (alarmSound == null) {
+            alarmSound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+        }
+
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, COMPLETE_CHANNEL_ID)
             .setContentTitle(label + " complete")
             .setContentText("Great work! Timer finished.")
@@ -136,6 +144,10 @@ public class TimerService extends Service {
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_REMINDER);
+        
+        if (alarmSound != null) {
+            builder.setSound(alarmSound);
+        }
 
         NotificationManager nm = getSystemService(NotificationManager.class);
         if (nm != null) nm.notify(COMPLETE_NOTIF_ID, builder.build());
@@ -247,6 +259,19 @@ public class TimerService extends Service {
             completeChannel.setDescription("Finished timer alerts");
             completeChannel.setShowBadge(true);
             completeChannel.enableVibration(true);
+            
+            // Set alarm sound for timer completion
+            Uri alarmSound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
+            if (alarmSound == null) {
+                alarmSound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+            }
+            if (alarmSound != null) {
+                AudioAttributes audioAttributes = new AudioAttributes.Builder()
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .setUsage(AudioAttributes.USAGE_ALARM)
+                    .build();
+                completeChannel.setSound(alarmSound, audioAttributes);
+            }
 
             NotificationManager nm = getSystemService(NotificationManager.class);
             if (nm != null) {
