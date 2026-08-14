@@ -17,7 +17,7 @@ import androidx.core.app.NotificationCompat;
 
 public class TimerService extends Service {
     public static final String CHANNEL_ID = "kawa_timer_channel";
-    public static final String COMPLETE_CHANNEL_ID = "kawa_timer_complete_channel";
+    public static final String COMPLETE_CHANNEL_ID = "kawa_timer_complete_channel_v2";
     public static final String ACTION_START = "ACTION_START";
     public static final String ACTION_PAUSE = "ACTION_PAUSE";
     public static final String ACTION_RESUME = "ACTION_RESUME";
@@ -142,11 +142,15 @@ public class TimerService extends Service {
             .setContentIntent(makeOpenIntent())
             .setVibrate(new long[]{0, 500, 200, 500})
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setCategory(NotificationCompat.CATEGORY_REMINDER);
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setFullScreenIntent(makeOpenIntent(), true);
         
         if (alarmSound != null) {
-            builder.setSound(alarmSound);
+            AudioAttributes audioAttributes = new AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_ALARM)
+                .build();
+            builder.setSound(alarmSound, audioAttributes);
         }
 
         NotificationManager nm = getSystemService(NotificationManager.class);
